@@ -1,0 +1,18 @@
+buildscript {
+    repositories {
+        mavenLocal()
+    }
+
+    dependencies {
+        classpath "net.kinjouj:gradle-mocha-phantomjs-plugin:0.1"
+    }
+}
+
+apply plugin: "war"
+apply plugin: "mocha-phantomjs"
+
+war {
+    from("src/main/javascript") {
+        into "static/js"
+    }
+}
