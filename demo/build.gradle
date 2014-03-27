@@ -16,3 +16,7 @@ war {
         into "static/js"
     }
 }
+
+testMochaPhantomJS {
+    options = ['-R', 'tap']
+}

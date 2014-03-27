@@ -1,6 +1,6 @@
 package net.kinjouj.gradle.plugin
 
-import javax.inject.Inject;
+import javax.inject.Inject
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -8,7 +8,7 @@ import org.gradle.api.internal.file.FileResolver
 
 class MochaPhantomJSPlugin implements Plugin<Project> {
 
-    FileResolver fileResolver;
+    FileResolver fileResolver
 
     @Inject
     MochaPhantomJSPlugin(FileResolver fileResolver) {

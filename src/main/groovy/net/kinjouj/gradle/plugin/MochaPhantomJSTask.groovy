@@ -3,120 +3,96 @@ package net.kinjouj.gradle.plugin
 import java.util.jar.JarEntry
 import java.util.jar.JarFile
 
-import org.gradle.api.DefaultTask;
-import org.gradle.api.file.SourceDirectorySet;
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.SourceDirectorySet
 import org.gradle.api.internal.file.DefaultSourceDirectorySet
 import org.gradle.api.internal.file.FileResolver
-import org.gradle.api.tasks.TaskAction;
+import org.gradle.api.tasks.TaskAction
 
 class MochaPhantomJSTask extends DefaultTask {
 
-    public static final String TASK_NAME = "mocha-phantomjs"
-    private static final String TEST_RESOURCE_DIRECTORY_BASE = "/resources/test/"
-    private String runner = "mocha.html"
+    public static final String TASK_NAME = "testMochaPhantomJS"
 
-    SourceDirectorySet mainSource;
-    SourceDirectorySet testSource;
+    SourceDirectorySet mainSource
+    SourceDirectorySet testSource
+
+    String runner = "mocha.html"
+    List<String> options = [];
 
     @TaskAction
     public void runTask() {
-        String buildTestResourceDir = project.buildDir.absolutePath + TEST_RESOURCE_DIRECTORY_BASE
-
+        def buildTestResourceDir = project.buildDir.absolutePath + "/resources/test"
         project.buildscript.configurations.classpath.each { artifact ->
-            JarFile jar = null;
-
-            try {
-                jar = new JarFile(artifact)
-
-                copyPluginResource(
-                    jar,
-                    jar.getEntry("mocha.js"),
-                    project.file(buildTestResourceDir + "mocha.js")
-                )
-
-                copyPluginResource(
-                    jar,
-                    jar.getEntry("mocha.css"),
-                    project.file(buildTestResourceDir + "mocha.css")
-                )
-
-                copyPluginResource(
-                    jar,
-                    jar.getEntry("chai.js"),
-                    project.file(buildTestResourceDir + "chai.js")
-                )
-            } finally {
-                if (jar != null) {
-                    jar.close()
-                }
+            new JarFile(artifact).with { jar ->
+                copyPluginResource(jar, project.file(buildTestResourceDir + "/mocha.js"))
+                copyPluginResource(jar, project.file(buildTestResourceDir + "/mocha.css"))
+                copyPluginResource(jar, project.file(buildTestResourceDir + "/chai.js"))
             }
         }
 
-        File runnerFile = project.file buildTestResourceDir + runner
+        File runnerFile = project.file(buildTestResourceDir + '/' + runner)
         if (!runnerFile.exists()) {
             throw new IOException(runnerFile.toString() + " file not exists")
         }
 
         project.copy {
             from mainSource
-            into buildTestResourceDir + "main"
-            include "**/*.js"
+            into buildTestResourceDir + "/main"
         }
 
         project.copy {
             from testSource
-            into buildTestResourceDir + "tests"
-            include "**/*.js"
+            into buildTestResourceDir + "/tests"
         }
 
         project.exec {
-            commandLine = ["mocha-phantomjs", runnerFile.toString()]
+            commandLine = buildCommand(runnerFile)
         }
     }
 
     public void setFileResolver(FileResolver fileResolver) {
-        mainSource = new DefaultSourceDirectorySet("javascript sources", fileResolver)
-        mainSource.srcDir "src/main/javascript"
-        mainSource.filter.include "**/*.js"
+        mainSource = new DefaultSourceDirectorySet("javascript main sources", fileResolver)
+        mainSource.with {
+            srcDir "src/main/javascript"
+            include "**/*.js"
+        }
 
         testSource = new DefaultSourceDirectorySet("javascript test sources", fileResolver)
-        testSource.srcDir "src/test/javascript"
-        testSource.filter.include "**/*.js"
+        testSource.with {
+            srcDir "src/test/javascript"
+            include "**/*.js"
+        }
     }
 
     public void setRunner(String runner) {
         this.runner = runner
     }
 
-    void copyPluginResource(JarFile jar, JarEntry entry, File outFile) {
-        if (outFile.exists()) {
-            return
-        }
+    public void setOptions(List<String> options) {
+        this.options = options
+    }
 
-        FileWriter out = null
+    void copyPluginResource(JarFile jar, File outFile) {
+        if (outFile.exists()) return
 
-        try {
-            InputStream is = null
+        JarEntry entry = jar.getJarEntry(outFile.getName())
 
-            try {
-                is = jar.getInputStream entry
-                out = new FileWriter(outFile)
-                is.eachLine { line ->
-                    out.println line
-                }
-            } catch (IOException e) {
-                e.printStackTrace()
-            } finally {
-                if (is != null) {
-                    is.close()
+        if (entry) {
+            jar.getInputStream(entry).withReader { is ->
+                new FileWriter(outFile).withWriter { out ->
+                    is.eachLine { line ->
+                        out.println line
+                    }
                 }
             }
-        } catch (IOException e) {
-            e.printStackTrace()
-        } finally {
-            if (out != null) {
-                out.close()
-            }
         }
+    }
+
+    Object buildCommand(File runnerFile) {
+        def commands = ["mocha-phantomjs"]
+        commands += options
+        commands << runnerFile.toString()
+
+        return commands
     }
 }
